@@ -1,0 +1,242 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Twilio Proxy: Recording &amp; Transcription Options</title>
+<style>
+  :root {
+    --red: #F22F46; --red-light: #FDECEE; --ink: #121C2D; --gray: #606B85; --line: #CACDD8;
+    --bg: #F4F4F6; --blue: #0263E0; --blue-light: #EBF4FF; --green: #14B053; --green-light: #EDFDF3;
+    --purple: #6D2ED1; --purple-light: #F5F0FC;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; font: 15px/1.55 Inter, "Helvetica Neue", Arial, sans-serif; color: var(--ink); background: var(--bg); }
+  .page { max-width: 1040px; margin: 0 auto; padding: 0 28px 48px; }
+  header { background: var(--ink); color: #fff; padding: 36px 28px 30px; margin-bottom: 28px; }
+  header .inner { max-width: 1040px; margin: 0 auto; padding: 0 28px; }
+  .brand { display: flex; align-items: center; gap: 10px; font-weight: 700; letter-spacing: .02em; color: #fff; font-size: 14px; text-transform: uppercase; }
+  .brand .dot { width: 22px; height: 22px; border-radius: 50%; background: var(--red); position: relative; }
+  .brand .dot::before { content: ""; position: absolute; inset: 5px; border-radius: 50%; background:
+      radial-gradient(circle at 30% 30%, #fff 2px, transparent 2.5px), radial-gradient(circle at 70% 30%, #fff 2px, transparent 2.5px),
+      radial-gradient(circle at 30% 70%, #fff 2px, transparent 2.5px), radial-gradient(circle at 70% 70%, #fff 2px, transparent 2.5px); }
+  header h1 { font-size: 32px; line-height: 1.2; margin: 16px 0 8px; }
+  header p { margin: 0; color: #C6CAD7; max-width: 760px; }
+  h2 { font-size: 22px; margin: 36px 0 10px; display: flex; align-items: center; gap: 10px; }
+  h2 .tag { font-size: 12px; font-weight: 700; padding: 3px 9px; border-radius: 999px; color: #fff; background: var(--red); }
+  h2 .tag.blue { background: var(--blue); } h2 .tag.purple { background: var(--purple); }
+  h3 { font-size: 16px; margin: 18px 0 6px; }
+  p { margin: 6px 0 10px; }
+  .card { background: #fff; border: 1px solid var(--line); border-radius: 10px; padding: 20px 22px; margin: 14px 0; }
+  .muted { color: var(--gray); }
+  code { font: 13px/1.4 "Fira Mono", Menlo, monospace; background: var(--bg); padding: 1px 5px; border-radius: 4px; }
+  pre { font: 12.5px/1.5 "Fira Mono", Menlo, monospace; background: var(--ink); color: #E1E3EA; padding: 14px 16px; border-radius: 8px; overflow-x: auto; margin: 8px 0; }
+  table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  th, td { text-align: left; padding: 9px 10px; border-bottom: 1px solid #E1E3EA; vertical-align: top; }
+  th { font-size: 12px; text-transform: uppercase; letter-spacing: .04em; color: var(--gray); }
+  .grid2 { display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1fr); gap: 16px; }
+  .grid2.wide-left { grid-template-columns: minmax(0,1.35fr) minmax(0,1fr); }
+  .callout { border-left: 4px solid var(--red); background: var(--red-light); padding: 10px 14px; border-radius: 0 8px 8px 0; margin: 10px 0; }
+  .callout.blue { border-color: var(--blue); background: var(--blue-light); }
+  .callout.green { border-color: var(--green); background: var(--green-light); }
+  ul { margin: 6px 0 10px; padding-left: 20px; } li { margin: 3px 0; }
+
+  /* Block diagrams */
+  .diagram { background: #fff; border: 1px solid var(--line); border-radius: 10px; padding: 24px 18px 18px; margin: 14px 0; overflow-x: auto; }
+  .flow { display: flex; align-items: stretch; justify-content: safe center; }
+  .node { flex: 0 0 auto; width: 124px; border-radius: 10px; padding: 10px 8px; text-align: center; font-size: 13px; line-height: 1.35;
+          border: 2px solid var(--line); background: #fff; display: flex; flex-direction: column; justify-content: center; }
+  .node b { display: block; font-size: 14px; margin-bottom: 2px; }
+  .node small { color: var(--gray); font-size: 11.5px; }
+  .node.phone { border-color: var(--ink); background: var(--bg); }
+  .node.twilio { border-color: var(--red); background: var(--red-light); }
+  .node.orch { border-color: var(--purple); background: var(--purple-light); }
+  .node.app { border-color: var(--blue); background: var(--blue-light); }
+  .node.out { border-color: var(--green); background: var(--green-light); }
+  .arrow { flex: 1 1 60px; min-width: 50px; position: relative; display: flex; align-items: center; }
+  .arrow::before { content: ""; position: absolute; left: 4px; right: 10px; top: 50%; height: 2px; background: var(--gray); }
+  .arrow::after { content: ""; position: absolute; right: 2px; top: calc(50% - 6px); border: 6px solid transparent; border-left: 9px solid var(--gray); border-right: 0; }
+  .arrow span { position: absolute; left: 0; right: 0; bottom: calc(50% + 6px); text-align: center; font-size: 11px; color: var(--gray); line-height: 1.2; padding: 0 2px; }
+  .arrow.red::before { background: var(--red); } .arrow.red::after { border-left-color: var(--red); }
+  .arrow.dashed::before { background: repeating-linear-gradient(90deg, var(--gray) 0 6px, transparent 6px 11px); }
+  .legs { display: flex; justify-content: space-between; gap: 12px; margin-top: 12px; }
+  .leg { text-align: center; font-size: 12px; font-weight: 600; padding: 6px 8px; border-radius: 6px; }
+  .leg.in { background: var(--blue-light); color: var(--blue); }
+  .leg.outb { background: var(--green-light); color: #0B7A39; }
+    .caption { font-size: 12.5px; color: var(--gray); text-align: center; margin-top: 12px; }
+  .stack { display: flex; flex-direction: column; gap: 8px; flex: 0 0 auto; }
+  .stack .node { width: 140px; }
+  .node.wide { width: 158px; }
+  footer { color: var(--gray); font-size: 12.5px; margin-top: 36px; border-top: 1px solid var(--line); padding-top: 14px; }
+  @media print { body { background: #fff; } .card, .diagram { break-inside: avoid; } }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="inner">
+    <div class="brand"><span class="dot"></span> Twilio · Solutions Engineering</div>
+    <h1>Recording &amp; Transcribing Twilio Proxy Calls</h1>
+    <p>We tested two ways to capture what's said on a masked-number Proxy call: <b>Conversation Orchestrator capture rules</b> for real-time transcription, and <b>REST-started recording chained to Batch Transcription</b> for a post-call recording plus transcript. This page covers how each works, what to configure, and what we learned building a working quickstart.</p>
+  </div>
+</header>
+
+<div class="page">
+
+<h2>At a glance</h2>
+<div class="card">
+  <table>
+    <tr><th></th><th>Option 1 · Conversation Orchestrator</th><th>Option 2 · Recording + Batch Transcription</th></tr>
+    <tr><td><b>Output</b></td><td>Real-time utterances stored as Communications on a Conversation</td><td>Dual-channel MP3 recording, plus a post-call transcript (sentences, word timings, confidence)</td></tr>
+    <tr><td><b>Latency</b></td><td>During the call</td><td>About 1 minute after hangup</td></tr>
+    <tr><td><b>Code in the call path</b></td><td>None. A capture rule on the proxy number does the work.</td><td>One REST call to start recording. Transcription is chained automatically.</td></tr>
+    <tr><td><b>Audio kept</b></td><td>No</td><td>Yes (Recording resource)</td></tr>
+    <tr><td><b>Downstream</b></td><td>Memory profiles, Conversation Intelligence operators</td><td>Your webhook. Can optionally also feed a Conversation Configuration.</td></tr>
+    <tr><td><b>Billing gotcha</b></td><td>Capture <b>inbound only</b>, or each call is transcribed twice</td><td>Account must not be flagged as a Voice Intelligence v2 customer</td></tr>
+  </table>
+</div>
+
+<h2>How a Proxy voice call is built</h2>
+<p>When participant A dials their assigned proxy number, Proxy answers and dials participant B from the same proxy number. Each call produces <b>two call legs, each with its own Call SID</b>, grouped under one Proxy Interaction (<code>KI…</code>). Both legs carry the full bridged audio.</p>
+<div class="diagram">
+  <div class="flow">
+    <div class="node phone"><b>Participant A</b><small>real number<br>+1 704 …</small></div>
+    <div class="arrow"><span>dials</span></div>
+    <div class="node twilio"><b>Proxy number</b><small>pool number<br>+1 980 …</small></div>
+    <div class="arrow red"><span>webhook</span></div>
+    <div class="node twilio"><b>Proxy Service</b><small>Session KC… · Interaction KI…</small></div>
+    <div class="arrow"><span>dials from proxy #</span></div>
+    <div class="node phone"><b>Participant B</b><small>real number<br>+1 919 …</small></div>
+  </div>
+  <div class="legs">
+    <div class="leg in" style="flex:0 0 51%">Inbound leg · <code>inboundResourceSid</code> CA… (A → proxy)</div>
+    <div class="leg outb" style="flex:1">Outbound leg · <code>outboundResourceSid</code> CA… (proxy → B)</div>
+  </div>
+  <div class="caption">Proxy sends <code>interceptCallbackUrl</code> once per interaction (before dialing B) and <code>callbackUrl</code> on status changes: outbound <code>initiated</code>, then <code>completed</code>.</div>
+</div>
+
+<h2><span class="tag purple">Option 1</span> Conversation Orchestrator capture rules</h2>
+<p>Add a VOICE capture rule that matches the proxy number to a Conversation Configuration. Twilio then attaches real-time transcription to matching calls and writes every utterance into a Conversation. Proxy and your application don't change at all.</p>
+<div class="diagram">
+  <div class="flow">
+    <div class="node phone"><b>Participant A</b><small>dials proxy #</small></div>
+    <div class="arrow"><span>inbound leg</span></div>
+    <div class="node twilio"><b>Proxy number</b><small>matches rule<br><code>* → +1 980…</code></small></div>
+    <div class="arrow red"><span>auto</span></div>
+    <div class="node orch"><b>Real-time transcription</b><small>provisioned by Orchestrator<br>(Deepgram)</small></div>
+    <div class="arrow"><span>utterances</span></div>
+    <div class="stack">
+      <div class="node orch"><b>Conversation</b><small>one per captured leg</small></div>
+      <div class="node orch"><b>Communications</b><small>type <code>TRANSCRIPTION</code><br><code>channelId</code> = CA…</small></div>
+    </div>
+    <div class="arrow dashed"><span>optional</span></div>
+    <div class="stack">
+      <div class="node out"><b>Memory Store</b><small>profiles</small></div>
+      <div class="node out"><b>Conversation Intelligence</b><small>operators</small></div>
+    </div>
+  </div>
+</div>
+
+<div class="grid2">
+  <div class="card">
+    <h3>Configure</h3>
+    <ul>
+      <li>A <b>Memory Store</b>. It's required by the configuration.</li>
+      <li>A <b>Conversation Configuration</b> linked to that store.</li>
+      <li>One <b>inbound-only</b> VOICE capture rule per proxy number:</li>
+    </ul>
+<pre>"channelSettings": {
+  "VOICE": {
+    "captureRules": [
+      { "from": "*", "to": "+15551234567",
+        "metadata": { "callType": "PSTN" } }
+    ]
+  }
+}</pre>
+    <p class="muted">Updates are <code>PUT /v2/ControlPlane/Configurations/{id}</code> with the full body, and Twilio applies them asynchronously.</p>
+  </div>
+  <div class="card">
+    <h3>What we learned</h3>
+    <div class="callout"><b>Don't use the usual bidirectional rule pair.</b> <code>proxy → *</code> also matches the outbound leg Proxy places. That produces <b>two conversations and two transcription streams per call</b>, so every utterance is transcribed and billed twice. The inbound leg alone already contains both speakers.</div>
+    <ul>
+      <li>Find a call's transcript with <code>GET /v2/Conversations?channelId=CA…</code>, then <code>/Communications</code>.</li>
+      <li>The Call SID is in <code>channelId</code>. <code>resourceId</code> is a transcription ID (<code>GT…#n</code>).</li>
+      <li>The text is in <code>content.text</code>. <code>content.transcription</code> holds metadata (engine, confidence).</li>
+      <li>The far party on a leg is labeled with the proxy number, not their real number.</li>
+    </ul>
+  </div>
+</div>
+
+<h2><span class="tag blue">Option 2</span> Recording API + chained Batch Transcription</h2>
+<p>When Proxy reports the outbound leg, the app starts a recording on the <b>inbound</b> Call SID using a Recording Configuration. That configuration is chained to a Transcription Configuration, so Twilio transcribes the finished recording automatically and posts the transcript to a webhook. No code connects the recording to the transcript.</p>
+<div class="diagram">
+  <div class="flow">
+    <div class="node twilio"><b>Proxy Service</b><small><code>callbackUrl</code><br>outbound = <code>initiated</code></small></div>
+    <div class="arrow red"><span>webhook</span></div>
+    <div class="node app wide"><b>Your app</b><small><code>POST /Calls/{inbound CA}/</code><br><code>Recordings</code><br>+ RecordingConfigurationId</small></div>
+    <div class="arrow"><span>retry until bridged</span></div>
+    <div class="node twilio"><b>Recording Configuration</b><small>dual channel<br>ch1 caller · ch2 callee</small></div>
+    <div class="arrow"><span>features[] chain</span></div>
+    <div class="node twilio"><b>Transcription Configuration</b><small>twilio_managed · en-US</small></div>
+    <div class="arrow"><span>after hangup</span></div>
+    <div class="stack">
+      <div class="node out"><b>Recording</b><small>RE… · MP3 / WAV</small></div>
+      <div class="node out"><b>Transcript webhook</b><small><code>sentences[]</code>, words, confidence</small></div>
+    </div>
+  </div>
+</div>
+
+<div class="grid2 wide-left">
+  <div class="card">
+    <h3>Configure</h3>
+<pre>POST https://voice.twilio.com/v2/Configurations/Transcription
+{ "unique_name": "proxy_recording_quickstart",
+  "configuration": {
+    "configurationType": "Transcription",
+    "transcriptionEngine": "twilio_managed",
+    "language": "en-US",
+    "transcriptionStatusCallback": { "url": ".../webhooks/transcription", "method": "POST" },
+    "participantDefaults": [
+      { "audioChannelIndex": 1, "type": "CUSTOMER" },
+      { "audioChannelIndex": 2, "type": "HUMAN_AGENT" } ] } }
+
+POST https://voice.twilio.com/v2/Configurations/Recording
+{ "unique_name": "proxy_recording_quickstart",
+  "configuration": {
+    "configurationType": "Recording",
+    "compositionPolicy": { "channels": "dual", "trim": "do-not-trim" },
+    "callRecordingStatusCallback": { "url": ".../webhooks/recording",
+      "method": "POST", "events": ["in-progress", "completed"] },
+    "features": [ { "type": "transcriptionConfiguration",
+                    "featureId": "voice_transcriptionconfiguration_…" } ] } }</pre>
+  </div>
+  <div class="card">
+    <h3>What we learned</h3>
+    <div class="callout"><b>The intercept webhook is too early.</b> Starting a recording from <code>interceptCallbackUrl</code> fails with <code>21220</code> "not eligible for recording," because Proxy hasn't bridged B yet. Proxy's <code>callbackUrl</code> reports the outbound leg only as <code>initiated</code> and then <code>completed</code>, with no <code>in-progress</code>. So we start on <code>initiated</code> and retry every 2s until B answers, then stop.</div>
+    <ul>
+      <li>Record the <b>inbound</b> leg. Dual-channel puts A on channel 1 and B on channel 2.</li>
+      <li>Error <code>46009</code> "v2 transcription customer" means the account is flagged for Voice Intelligence v2. Support has to enable v3 before Transcription Configurations can be created.</li>
+      <li>The transcript is only delivered to your webhook. Store it yourself, or link a <code>conversationConfigurationId</code> to keep it in Orchestrator.</li>
+      <li>Recording media requires account auth, so serve downloads through your backend.</li>
+    </ul>
+  </div>
+</div>
+
+<h2>Webhooks &amp; setup checklist</h2>
+<div class="card">
+  <table>
+    <tr><th>Resource</th><th>Setting</th><th>Points to</th><th>Used by</th></tr>
+    <tr><td>Proxy Service</td><td><code>interceptCallbackUrl</code></td><td><code>/webhooks/proxy/intercept</code></td><td>Logging only (too early to record)</td></tr>
+    <tr><td>Proxy Service</td><td><code>callbackUrl</code></td><td><code>/webhooks/proxy/callback</code></td><td>Option 2: start recording on outbound <code>initiated</code></td></tr>
+    <tr><td>Recording Configuration</td><td><code>callRecordingStatusCallback</code></td><td><code>/webhooks/recording</code></td><td>Option 2: RE SID and status</td></tr>
+    <tr><td>Transcription Configuration</td><td><code>transcriptionStatusCallback</code></td><td><code>/webhooks/transcription</code></td><td>Option 2: final transcript</td></tr>
+    <tr><td>Conversation Configuration</td><td>VOICE <code>captureRules</code></td><td>no webhook needed</td><td>Option 1: <code>* → proxy #</code> only</td></tr>
+  </table>
+  <div class="callout blue"><b>Proxy number pool gotchas.</b> Proxy geo-matches on country at minimum, so a Canadian pool number can't serve US participants ("no compatible Proxy numbers"). Adding a number to the pool also overwrites its voice and SMS webhooks.</div>
+  <div class="callout green"><b>Which one?</b> Use Option 1 when you want live transcripts flowing into Memory and Conversation Intelligence with no call-path code. Use Option 2 when you need the audio file, word-level timing, or a single post-call transcript for QA or compliance. Both can run at the same time on the same call.</div>
+</div>
+
+<footer>Built and verified with the Proxy Recording Quickstart (Node/Express, local ngrok) · November 2026</footer>
+</div>
+</body>
+</html>

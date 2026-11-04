@@ -1,0 +1,13 @@
+{
+  "name": "proxy-recording-quickstart",
+  "private": true,
+  "scripts": {
+    "setup": "node scripts/setup.js",
+    "start": "node src/server.js"
+  },
+  "dependencies": {
+    "dotenv": "^18.0.9",
+    "express": "^5.3.0",
+    "twilio": "^6.2.0"
+  }
+}

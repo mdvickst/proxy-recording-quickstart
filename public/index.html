@@ -1,0 +1,164 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Proxy Recording Quickstart</title>
+<style>
+  body { font: 14px/1.4 -apple-system, system-ui, sans-serif; margin: 2rem; color: #1f2937; background: #f9fafb; }
+  h1 { font-size: 1.4rem; }
+  .card { background: #fff; border: 1px solid #e5e7eb; border-radius: 8px; padding: 1rem 1.25rem; margin-bottom: 1rem; }
+  label.toggle { display: flex; gap: .5rem; align-items: center; margin: .4rem 0; }
+  .err { color: #b91c1c; font-size: 12px; }
+  .muted { color: #6b7280; }
+  table { width: 100%; border-collapse: collapse; margin-top: .75rem; font-size: 13px; }
+  th, td { text-align: left; padding: 4px 6px; border-bottom: 1px solid #f3f4f6; vertical-align: top; }
+  code { font-size: 12px; }
+  .transcript { white-space: pre-wrap; background: #f3f4f6; padding: .5rem; border-radius: 4px; margin-top: 4px; max-width: 420px; }
+  button { cursor: pointer; }
+  .right { float: right; }
+</style>
+</head>
+<body>
+<h1>Proxy Recording Quickstart</h1>
+
+<div class="card">
+  <strong>Recording &amp; transcription</strong>
+  <label class="toggle"><input type="checkbox" id="orchestrator"> Option 1 — Conversation Orchestrator (real-time capture rules on proxy numbers)</label>
+  <label class="toggle"><input type="checkbox" id="recording"> Option 2 — Record inbound call + batch transcription</label>
+  <div class="err" id="settingsErr"></div>
+</div>
+
+<div class="card">
+  <strong>New session</strong>
+  <form id="newSession">
+    <input name="a" placeholder="+15551234567" required>
+    <input name="b" placeholder="+15557654321" required>
+    <button>Create</button>
+    <span class="err" id="sessionErr"></span>
+  </form>
+</div>
+
+<div id="sessions"></div>
+
+<script>
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const expanded = new Set();
+const orchTranscripts = {};
+
+async function request(method, url, body) {
+  const res = await fetch(url, {
+    method,
+    headers: body ? { 'Content-Type': 'application/json' } : {},
+    body: body ? JSON.stringify(body) : undefined,
+  });
+  const json = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(json.error || res.statusText);
+  return json;
+}
+
+async function loadSettings() {
+  const s = await request('GET', '/api/settings');
+  $('orchestrator').checked = s.orchestrator;
+  $('recording').checked = s.recording;
+}
+
+for (const key of ['orchestrator', 'recording']) {
+  $(key).addEventListener('change', async (e) => {
+    const el = e.target;
+    el.disabled = true;
+    $('settingsErr').textContent = '';
+    try { await request('POST', '/api/settings', { [key]: el.checked }); }
+    catch (err) { el.checked = !el.checked; $('settingsErr').textContent = err.message; }
+    el.disabled = false;
+  });
+}
+
+$('newSession').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  $('sessionErr').textContent = '';
+  const f = new FormData(e.target);
+  try {
+    await request('POST', '/api/sessions', { a: f.get('a').trim(), b: f.get('b').trim() });
+    e.target.reset();
+    refresh();
+  } catch (err) { $('sessionErr').textContent = err.message; }
+});
+
+function sidCell(sid, status) {
+  return sid ? `<code>${esc(sid)}</code><br><span class="muted">${esc(status)}</span>` : '<span class="muted">—</span>';
+}
+
+function recordingCell(r) {
+  if (!r || (!r.recordingSid && !r.recordingError)) return '<span class="muted">—</span>';
+  if (r.recordingError) return `<span class="err">${esc(r.recordingError)}</span>`;
+  const sid = r.recordingStatus === 'completed'
+    ? `<a href="/api/recordings/${esc(r.recordingSid)}"><code>${esc(r.recordingSid)}</code></a>`
+    : `<code>${esc(r.recordingSid)}</code>`;
+  return `${sid}<br><span class="muted">${esc(r.recordingStatus)}</span>`;
+}
+
+function batchCell(i) {
+  const t = i.recording?.transcription;
+  if (!t) return '<span class="muted">—</span>';
+  if (t.error) return `<span class="err">${esc(t.error.message || JSON.stringify(t.error))}</span>`;
+  const open = expanded.has(i.sid);
+  const text = t.sentences.map((s) => `ch${s.channel}: ${s.text}`).join('\n') || '(no speech)';
+  return `${esc(t.status)} <button data-batch="${i.sid}">${open ? 'hide' : 'show'}</button>`
+    + ` <a href="/api/calls/${esc(i.inboundSid)}/batch-transcript">download</a>`
+    + (open ? `<div class="transcript">${esc(text)}</div>` : '');
+}
+
+function orchCell(callSid, label) {
+  if (!callSid || !callSid.startsWith('CA')) return '';
+  const lines = orchTranscripts[callSid];
+  const text = lines && (lines.map((l) => `${l.author}: ${l.text}`).join('\n') || 'No communications yet');
+  return `<div><button data-orch="${callSid}">load ${label}</button>`
+    + (lines ? `<div class="transcript">${esc(text)}</div>` : '') + '</div>';
+}
+
+function renderSessions(sessions) {
+  $('sessions').innerHTML = sessions.map((s) => `
+    <div class="card">
+      <button class="right" data-delete="${s.sid}">Delete</button>
+      <strong><code>${s.sid}</code></strong>
+      <span class="muted">${esc(s.status)} · ${new Date(s.dateCreated).toLocaleString()}</span>
+      <div style="margin-top:.4rem">${s.participants.map((p) =>
+        `${esc(p.identifier)} calls <strong>${esc(p.proxyIdentifier)}</strong> to reach the other party`).join('<br>')}</div>
+      ${s.interactions.length ? `<table>
+        <tr><th>Time</th><th>Type</th><th>Inbound</th><th>Outbound</th><th>Recording</th><th>Batch transcript</th><th>Orchestrator</th></tr>
+        ${s.interactions.map((i) => `<tr>
+          <td>${new Date(i.dateCreated).toLocaleTimeString()}</td>
+          <td>${esc(i.type)}</td>
+          <td>${sidCell(i.inboundSid, i.inboundStatus)}</td>
+          <td>${sidCell(i.outboundSid, i.outboundStatus)}</td>
+          <td>${recordingCell(i.recording)}</td>
+          <td>${batchCell(i)}</td>
+          <td>${orchCell(i.inboundSid, 'inbound')}${orchCell(i.outboundSid, 'outbound')}</td>
+        </tr>`).join('')}
+      </table>` : '<div class="muted" style="margin-top:.4rem">No interactions yet. Call a proxy number from a participant\'s phone.</div>'}
+    </div>`).join('') || '<div class="muted">No sessions</div>';
+}
+
+$('sessions').addEventListener('click', async (e) => {
+  const d = e.target.dataset;
+  if (d.delete) await request('DELETE', `/api/sessions/${d.delete}`).catch((err) => alert(err.message));
+  else if (d.batch) expanded.has(d.batch) ? expanded.delete(d.batch) : expanded.add(d.batch);
+  else if (d.orch) {
+    orchTranscripts[d.orch] = await request('GET', `/api/calls/${d.orch}/orchestrator-transcript`)
+      .catch((err) => [{ author: 'error', text: err.message }]);
+  } else return;
+  refresh();
+});
+
+async function refresh() {
+  try { renderSessions(await request('GET', '/api/sessions')); }
+  catch (err) { $('sessions').innerHTML = `<div class="card err">${esc(err.message)}</div>`; }
+}
+
+loadSettings();
+refresh();
+setInterval(refresh, 4000);
+</script>
+</body>
+</html>
